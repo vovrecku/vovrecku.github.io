@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- SÚKROMIE: prehliadač smie načítať len súbory tejto aplikácie a NESMIE nič odosielať na internet
+     (connect-src none = žiadne odosielanie dát, form-action none = žiadne odosielanie formulárov). -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'none'; font-src 'self'; object-src 'none'; frame-src 'none'; media-src 'none'; worker-src 'self'; manifest-src 'self'; form-action 'none'; base-uri 'none'">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="x-dns-prefetch-control" content="off">
+<title>Vo vrecku – osobný finančný poradca</title>
+<meta name="description" content="Koľko môžeš dnes minúť? Jednoduchý osobný rozpočet – príjem, výdavky a denný limit. Bez registrácie, dáta len v tvojom mobile.">
+<!-- Náhľad pri zdieľaní odkazu (Messenger, WhatsApp, Instagram, Facebook…) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Vo vrecku">
+<meta property="og:locale" content="sk_SK">
+<meta property="og:title" content="Vo vrecku – koľko môžeš dnes minúť?">
+<meta property="og:description" content="Jednoduchý osobný rozpočet. Bez registrácie, dáta len v tvojom mobile. Beta – hľadáme testerov.">
+<meta property="og:url" content="https://vovrecku.github.io/">
+<meta property="og:image" content="https://vovrecku.github.io/og-image.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Logo Vo vrecku – rifľové vrecko so zlatou mincou a appka s číslom Dnes môžeš minúť">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Vo vrecku – koľko môžeš dnes minúť?">
+<meta name="twitter:description" content="Jednoduchý osobný rozpočet. Bez registrácie, dáta len v tvojom mobile.">
+<meta name="twitter:image" content="https://vovrecku.github.io/og-image.jpg">
+<meta name="theme-color" content="#0a0c12">
+<!-- Fonty sú uložené priamo v appke (vendor/fonts), nič sa nesťahuje z cudzích serverov -->
+<link rel="stylesheet" href="vendor/fonts/fonts.css">
+<!-- Ikonka v karte prehliadača (logo: rifľové vrecko s mincou) -->
+<!-- Inštalácia na plochu mobilu / počítača (funguje na webovej adrese, nie pri otvorení dvojklikom) -->
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Vo vrecku">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+
+<style>
+  /* =========================================================
+     DIZAJN „VO VRECKU“ – v štýle reklamného videa:
+     tmavé pozadie s bodkovanou mriežkou, elektrická modrá so žiarou,
+     široké písmo na čísla, kurzíva a technické (mono) popisky.
+     Farby si vieš zmeniť tu v :root.
+     ========================================================= */
+  :root {
+    color-scheme: dark;
+    --bg: #0a0c12;                     /* pozadie stránky */
+    --card: rgba(20, 24, 36, .82);     /* pozadie kariet */
+    --card-solid: #141824;
+    --text: #eef1f8;                   /* hlavný text */
+    --muted: #8b93a7;                  /* sivý pomocný text */
+    --line: rgba(255, 255, 255, .09);  /* tenké čiary */
+    --acc: #4d8dff;                    /* elektrická modrá */
+    --acc2: #9fc0ff;                   /* svetlá modrá (text so žiarou) */
+    --green: #3ddc84;  --green-bg: rgba(61, 220, 132, .12);   /* v poriadku */
+    --orange: #ff9f43; --orange-bg: rgba(255, 159, 67, .13);  /* pozor */
+    --red: #ff5c5c;    --red-bg: rgba(255, 92, 92, .14);      /* mínus */
+    --radius: 24px;
+    --serif: 'Instrument Serif', Georgia, serif;
+    --mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    font-family: 'Archivo', system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    background:
+      radial-gradient(900px 600px at 100% -10%, rgba(77, 141, 255, .22), transparent 60%),
+      radial-gradient(700px 500px at -10% 110%, rgba(77, 141, 255, .12), transparent 60%),
+      var(--bg);
+    background-attachment: fixed;
+    color: var(--text);
+    line-height: 1.45;
+    -webkit-text-size-adjust: 100%;
+    min-height: 100vh;
+  }
+  /* bodková mriežka cez celé pozadie */
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none; z-index: -1;
+    background-image: radial-gradient(circle, rgba(255, 255, 255, .09) 1px, transparent 1.5px);
+    background-size: 28px 28px;
+  }
+
+  /* Čísla majú rovnakú šírku, aby sumy lícovali */
+  .value, .item-amount, .free-big, .total-row { font-variant-numeric: tabular-nums; }
+
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 16px; }
+
+  /* ---------- Horná lišta ---------- */
+  .topbar {
+    background: rgba(10, 12, 18, .78);
+    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .topbar-inner {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; padding-top: 12px; padding-bottom: 12px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .logo { width: 42px; height: 42px; border-radius: 12px; display: block; box-shadow: 0 0 22px rgba(77, 141, 255, .5), inset 0 0 0 1px rgba(255, 255, 255, .15); }
+  .brand h1 { margin: 0; font-size: 1.15rem; font-weight: 900; font-stretch: 125%; text-transform: uppercase; letter-spacing: .01em; }
+  .brand p { margin: 0; font-family: var(--serif); font-style: italic; font-size: .95rem; color: var(--muted); }
+
+  .month-nav { display: flex; align-items: center; gap: 6px; }
+  .month-label { min-width: 170px; text-align: center; font-family: var(--mono); font-weight: 700; text-transform: uppercase; letter-spacing: .06em; font-size: .9rem; }
+  .icon-btn {
+    width: 42px; height: 42px; border-radius: 50%; border: 1px solid var(--line);
+    background: rgba(255, 255, 255, .04); font-size: 1.1rem; cursor: pointer; color: var(--text);
+  }
+  .icon-btn:hover { border-color: var(--acc); box-shadow: 0 0 14px rgba(77, 141, 255, .45); }
+
+  main.wrap { padding-top: 18px; padding-bottom: 48px; counter-reset: sec; }
+
+  /* ---------- Karty ---------- */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, .35), inset 0 1px 0 rgba(255, 255, 255, .05);
+    padding: 20px;
+    min-width: 0;
+  }
+  /* nadpisy kariet ako HUD popisky: "01 — ZAPÍSAŤ VÝDAVOK" */
+  .card h2 {
+    margin: 0 0 14px; font-family: var(--mono); font-size: .8rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .1em; color: var(--acc2);
+    display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
+  }
+  .card h2::before { counter-increment: sec; content: counter(sec, decimal-leading-zero) " —"; color: var(--muted); }
+  .card h2 .hint { font-family: var(--serif); font-style: italic; text-transform: none; letter-spacing: 0; font-weight: 400; font-size: 1rem; color: var(--muted); }
+
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; margin-top: 16px; }
+  @media (min-width: 860px) {
+    .grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+    .span2 { grid-column: 1 / -1; }
+  }
+
+  /* ---------- Súhrn: hlavné číslo + menšie štatistiky ---------- */
+  .summary { position: relative; overflow: hidden; }
+  .summary::after {   /* modrá žiara za hlavným číslom */
+    content: ""; position: absolute; width: 560px; height: 560px; left: 50%; top: -300px; transform: translateX(-50%);
+    background: radial-gradient(circle, rgba(77, 141, 255, .3), transparent 65%); pointer-events: none;
+  }
+  .hero { position: relative; z-index: 1; text-align: center; padding: 4px 0 18px; }
+  .hero .lead { display: block; font-family: var(--serif); font-style: italic; font-size: clamp(1.6rem, 6vw, 2.2rem); color: #d6dbea; }
+  .hero .value {
+    display: block; font-weight: 900; letter-spacing: -.03em; line-height: 1.02;
+    font-size: clamp(3rem, 15vw, 5.8rem); white-space: nowrap; color: var(--text);
+  }
+  .hero .value.pos { color: var(--acc2); text-shadow: 0 0 28px rgba(77, 141, 255, .75), 0 0 80px rgba(77, 141, 255, .45); }
+  .hero .value.warn-text { text-shadow: 0 0 30px rgba(255, 159, 67, .55); }
+  .hero .value.neg { text-shadow: 0 0 30px rgba(255, 92, 92, .55); }
+  .hero .sub { display: block; margin-top: 8px; font-family: var(--mono); font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+
+  .stats { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .stat {
+    background: rgba(255, 255, 255, .035); border: 1px solid var(--line); border-radius: 16px; padding: 12px 14px;
+    display: flex; flex-direction: column; min-width: 0;
+  }
+  .stat .label { font-family: var(--mono); font-size: .64rem; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+  .stat .value { font-size: clamp(1rem, 4.3vw, 1.6rem); font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pos { color: var(--green); }
+  .warn-text { color: var(--orange); }
+  .neg { color: var(--red); }
+
+  /* Farebný pás so stavom */
+  .status { position: relative; z-index: 1; margin-top: 14px; padding: 12px 14px; border-radius: 14px; font-weight: 600; border: 1px solid; font-size: .95rem; }
+  .status.ok   { background: var(--green-bg);  color: #8ff0b8; border-color: rgba(61, 220, 132, .45); }
+  .status.warn { background: var(--orange-bg); color: #ffc38a; border-color: rgba(255, 159, 67, .5); }
+  .status.bad  { background: var(--red-bg);    color: #ff9e9e; border-color: rgba(255, 92, 92, .5); }
+  .status.info { background: rgba(77, 141, 255, .12); color: var(--acc2); border-color: rgba(77, 141, 255, .45); }
+
+  /* ---------- Formuláre ---------- */
+  label { font-family: var(--mono); font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); display: block; margin-bottom: 6px; }
+  input, select {
+    width: 100%; min-width: 0; font: inherit;
+    font-size: 16px; /* 16px = mobil pri písaní nezväčšuje stránku */
+    padding: 12px 14px; border: 1px solid rgba(255, 255, 255, .12); border-radius: 14px;
+    background: rgba(0, 0, 0, .28); color: var(--text);
+  }
+  input::placeholder { color: #5d6478; }
+  select option { background: var(--card-solid); color: var(--text); }
+  input:focus, select:focus { outline: none; border-color: var(--acc); box-shadow: 0 0 0 3px rgba(77, 141, 255, .25), 0 0 18px rgba(77, 141, 255, .35); }
+  input.invalid { border-color: var(--red); background: var(--red-bg); }
+  /* iPhone (Safari): pole dátumu má inak vlastnú šírku a vytŕča z mriežky */
+  input[type="date"] { -webkit-appearance: none; appearance: none; display: block; min-width: 0; max-width: 100%; min-height: 50px; text-align: left; }
+  input[type="date"]::-webkit-date-and-time-value { text-align: left; margin: 0; }
+
+  .form-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+  .form-grid > div { min-width: 0; }
+  .form-grid .full { grid-column: 1 / -1; }
+  .inline-form { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .inline-form input[name="name"] { flex: 2 1 150px; width: auto; }
+  .inline-form input[name="amount"] { flex: 1 1 100px; width: auto; }
+
+  .btn {
+    font: inherit; font-weight: 800; border: none; border-radius: 999px;
+    padding: 12px 20px; cursor: pointer; background: var(--acc); color: #fff;
+    box-shadow: 0 0 24px rgba(77, 141, 255, .45); transition: box-shadow .2s, transform .1s;
+  }
+  .btn:hover { box-shadow: 0 0 34px rgba(77, 141, 255, .75); }
+  .btn:active { transform: scale(.97); }
+  .btn.ghost { background: transparent; color: var(--text); border: 1px solid rgba(255, 255, 255, .18); box-shadow: none; }
+  .btn.ghost:hover { border-color: var(--acc); box-shadow: 0 0 16px rgba(77, 141, 255, .35); }
+  .btn.small { padding: 7px 14px; font-size: .85rem; }
+  .btn.block { width: 100%; }
+  [hidden] { display: none !important; }
+
+  .error { color: var(--red); font-size: .85rem; font-weight: 600; margin-top: 8px; }
+  .error:empty { display: none; }
+
+  /* ---------- Zoznamy ---------- */
+  .list { list-style: none; margin: 0; padding: 0; }
+  .list li { display: flex; align-items: center; gap: 8px; padding: 11px 0; border-bottom: 1px solid var(--line); }
+  .list li:last-child { border-bottom: none; }
+  .list .empty { color: var(--muted); justify-content: center; font-family: var(--serif); font-style: italic; font-size: 1.05rem; }
+  .item-name { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+  .item-amount { font-weight: 800; white-space: nowrap; }
+  .mini-btn { border: none; background: transparent; cursor: pointer; border-radius: 10px; padding: 8px; font-size: .85rem; color: var(--muted); white-space: nowrap; font-family: inherit; }
+  .mini-btn:hover { background: rgba(255, 255, 255, .06); color: var(--text); }
+  .mini-btn.del:hover { background: var(--red-bg); color: var(--red); }
+
+  .list li.editing { flex-wrap: wrap; }
+  .list li.editing input { flex: 1 1 120px; width: auto; padding: 9px 12px; }
+  .list li.editing .error { flex-basis: 100%; }
+
+  .total-row { display: flex; justify-content: space-between; align-items: baseline; margin-top: 10px; padding-top: 12px; border-top: 1px dashed rgba(255, 255, 255, .16); font-weight: 800; }
+  .total-row > span:first-child { font-family: var(--mono); font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+  .total-row .big { font-size: 1.4rem; }
+
+  .exp-main { flex: 1; min-width: 0; }
+  .exp-top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .chip { font-size: .72rem; font-weight: 800; padding: 3px 10px; border-radius: 999px; color: #0a0c12; }
+  .exp-date { font-family: var(--mono); font-size: .72rem; color: var(--muted); }
+  .exp-note { font-size: .9rem; color: var(--muted); overflow-wrap: anywhere; }
+
+  /* ---------- Voľné peniaze ---------- */
+  .calc-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+  .calc-row label { margin: 0; font-family: inherit; font-size: 1rem; text-transform: none; letter-spacing: 0; color: var(--text); }
+  .calc-row input { max-width: 140px; text-align: right; }
+  .free-big { font-size: clamp(1.8rem, 7vw, 2.6rem); font-weight: 900; letter-spacing: -.02em; }
+  .free-big.pos { color: var(--acc2); text-shadow: 0 0 24px rgba(77, 141, 255, .6); }
+
+  /* ---------- Grafy ---------- */
+  .charts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  @media (min-width: 700px) { .charts { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+  .chart-title { font-family: var(--serif); font-style: italic; font-size: 1.25rem; margin-bottom: 6px; text-align: center; color: #d6dbea; }
+  .chart-box { position: relative; height: 260px; }
+  .chart-empty { position: absolute; inset: 0; display: none; align-items: center; justify-content: center; text-align: center; color: var(--muted); padding: 20px; border: 1px dashed var(--line); border-radius: 16px; }
+  .chart-box.is-empty .chart-empty { display: flex; }
+  .chart-box.is-empty canvas { visibility: hidden; }
+
+  .backup-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+  .muted { color: var(--muted); font-size: .9rem; }
+  .storage-info { margin: 0 0 12px; padding: 12px 14px; border-radius: 14px; background: rgba(255, 255, 255, .04); border: 1px solid var(--line); font-size: .9rem; }
+  .storage-info.ok { background: var(--green-bg); border-color: rgba(61, 220, 132, .4); color: #8ff0b8; font-weight: 600; }
+  #backupInfo.old { color: var(--orange); font-weight: 600; }
+  #installBtn { margin-bottom: 12px; }
+
+  /* Krátka správa dole */
+  .toast {
+    position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%) translateY(20px);
+    background: rgba(20, 24, 36, .97); color: var(--text); padding: 10px 12px 10px 18px; border-radius: 16px;
+    border: 1px solid rgba(77, 141, 255, .45); box-shadow: 0 10px 40px rgba(0, 0, 0, .5), 0 0 24px rgba(77, 141, 255, .25);
+    opacity: 0; pointer-events: none; transition: .25s;
+    width: max-content; max-width: calc(100% - 32px); z-index: 50;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+  .toast.bad { border-color: var(--red); box-shadow: 0 10px 40px rgba(0, 0, 0, .5), 0 0 24px rgba(255, 92, 92, .35); }
+  .toast-btn { font: inherit; font-weight: 800; color: var(--acc2); background: transparent; border: none; cursor: pointer; padding: 6px 8px; border-radius: 8px; white-space: nowrap; }
+  .toast-btn:hover { background: rgba(255, 255, 255, .08); }
+
+  /* ---------- Karta "Tvoj plán" ---------- */
+  .goal-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+  .goal-chip { font-size: .85rem; font-weight: 600; padding: 6px 12px; border-radius: 999px; background: rgba(77, 141, 255, .12); border: 1px solid rgba(77, 141, 255, .4); color: var(--acc2); }
+  .goal-eta { font-family: var(--serif); font-style: italic; font-size: 1.2rem; margin: 6px 0 4px; color: #d6dbea; }
+  .tips { list-style: none; margin: 10px 0; padding: 0; display: grid; gap: 8px; }
+  .tips li { padding: 10px 12px 10px 36px; border-radius: 12px; background: rgba(255, 255, 255, .035); border: 1px solid var(--line); position: relative; font-size: .93rem; }
+  .tips li::before { content: "→"; position: absolute; left: 13px; top: 9px; color: var(--acc); font-weight: 800; }
+  .tip-note { font-size: .78rem; margin: 0 0 10px; }
+
+  /* ---------- Úvodný sprievodca ---------- */
+  .ob {
+    position: fixed; inset: 0; z-index: 100; overflow-y: auto; -webkit-overflow-scrolling: touch;
+    background: radial-gradient(800px 520px at 50% -10%, rgba(77, 141, 255, .35), transparent 65%), var(--bg);
+  }
+  .ob::before { content: ""; position: fixed; inset: 0; pointer-events: none; background-image: radial-gradient(circle, rgba(255, 255, 255, .09) 1px, transparent 1.5px); background-size: 28px 28px; }
+  .ob-inner { position: relative; max-width: 560px; margin: 0 auto; padding: 20px 18px 28px; min-height: 100%; display: flex; flex-direction: column; }
+  .ob-top { display: flex; justify-content: space-between; align-items: center; }
+  .ob-step { font-family: var(--mono); font-weight: 700; letter-spacing: .1em; color: var(--acc2); font-size: .85rem; }
+  .ob-skip { background: none; border: none; color: var(--muted); font: inherit; font-size: .9rem; cursor: pointer; padding: 8px; }
+  .ob-skip:hover { color: var(--text); }
+  .ob-bar { height: 3px; background: rgba(255, 255, 255, .12); border-radius: 3px; margin: 10px 0 28px; position: relative; }
+  #obBarFill { position: absolute; left: 0; top: 0; bottom: 0; background: var(--acc); box-shadow: 0 0 12px var(--acc); border-radius: 3px; transition: width .35s; }
+  .ob-body { flex: 1; }
+  .ob-lead { font-family: var(--serif); font-style: italic; font-size: clamp(1.8rem, 8vw, 2.4rem); margin: 0; color: #d6dbea; }
+  .ob-title { font-weight: 900; font-stretch: 112%; text-transform: uppercase; letter-spacing: -.01em; line-height: 1.02; font-size: clamp(1.7rem, 8vw, 2.5rem); margin: 4px 0 12px; }
+  .ob-note { color: var(--muted); margin: 0 0 18px; }
+  .ob-sub { font-family: var(--mono); font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--acc2); margin: 18px 0 8px; }
+  .ob-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-bottom: 14px; }
+  .ob-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 18px; }
+  .ob-opt {
+    display: flex; align-items: center; gap: 12px; text-align: left; font: inherit; font-weight: 600; font-size: 1rem;
+    color: var(--text); background: rgba(255, 255, 255, .04); border: 1.5px solid rgba(255, 255, 255, .14);
+    border-radius: 16px; padding: 14px 16px; cursor: pointer; transition: border-color .15s, box-shadow .15s, background .15s;
+  }
+  .ob-chips .ob-opt { border-radius: 999px; padding: 10px 16px; }
+  .ob-opt.on { border-color: var(--acc); background: rgba(77, 141, 255, .14); box-shadow: 0 0 20px rgba(77, 141, 255, .35); }
+  .ob-ic { font-size: 1.4rem; }
+  .ob-fixed { display: grid; gap: 8px; }
+  .ob-row { display: flex; align-items: center; gap: 12px; margin: 0; font-family: inherit; font-size: 1rem; text-transform: none; letter-spacing: 0; color: var(--text); }
+  .ob-row span { flex: 1; }
+  .ob-row input { max-width: 150px; text-align: right; }
+  .ob-del { flex: none; width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .14); background: rgba(255, 255, 255, .04); color: var(--muted); font-size: 1rem; cursor: pointer; }
+  .ob-del:hover { border-color: var(--red); color: var(--red); background: var(--red-bg); }
+
+  /* prechody medzi krokmi */
+  .ob-leave-next { animation: obLeaveNext .17s ease-in forwards; }
+  .ob-leave-back { animation: obLeaveBack .17s ease-in forwards; }
+  .ob-enter-next > * { animation: obEnterNext .42s cubic-bezier(.2, .8, .2, 1) both; }
+  .ob-enter-back > * { animation: obEnterBack .42s cubic-bezier(.2, .8, .2, 1) both; }
+  /* jednotlivé časti kroku prichádzajú krátko po sebe */
+  .ob-enter-next > :nth-child(2), .ob-enter-back > :nth-child(2) { animation-delay: .04s; }
+  .ob-enter-next > :nth-child(3), .ob-enter-back > :nth-child(3) { animation-delay: .08s; }
+  .ob-enter-next > :nth-child(n+4), .ob-enter-back > :nth-child(n+4) { animation-delay: .12s; }
+  @keyframes obLeaveNext { to { opacity: 0; transform: translateX(-36px); filter: blur(6px); } }
+  @keyframes obLeaveBack { to { opacity: 0; transform: translateX(36px); filter: blur(6px); } }
+  @keyframes obEnterNext { from { opacity: 0; transform: translateX(44px); filter: blur(8px); } to { opacity: 1; transform: none; filter: none; } }
+  @keyframes obEnterBack { from { opacity: 0; transform: translateX(-44px); filter: blur(8px); } to { opacity: 1; transform: none; filter: none; } }
+  @media (prefers-reduced-motion: reduce) { .ob-body, .ob-body > * { animation: none !important; } }
+  .ob-two { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 8px; }
+  .ob-summary { border: 1px solid var(--line); background: rgba(255, 255, 255, .035); border-radius: 18px; padding: 6px 16px; margin-bottom: 16px; }
+  .ob-sum-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .ob-sum-row:last-child { border-bottom: none; }
+  .ob-sum-row strong { font-weight: 800; }
+  .ob-sum-row .acc { color: var(--acc2); text-shadow: 0 0 16px rgba(77, 141, 255, .6); font-size: 1.15rem; }
+  .ob-body { padding-bottom: 8px; }
+  /* tlačidlá dole – zatmavené pozadie, aby cez ne nepresvitali možnosti */
+  .ob-nav { display: flex; justify-content: space-between; gap: 10px; margin: 8px -18px -28px; padding: 28px 18px 18px; position: sticky; bottom: 0; background: linear-gradient(rgba(10, 12, 18, 0), var(--bg) 45%); }
+  .ob-nav .btn { flex: 1; padding: 15px; }
+
+  @media (max-width: 420px) {
+    .month-nav { width: 100%; justify-content: space-between; }
+    .month-label { min-width: 0; flex: 1; }
+    .card { padding: 16px; }
+    .stats { gap: 8px; }
+    .stat { padding: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- =========================================================
+     HORNÁ LIŠTA: názov aplikácie a prepínač mesiacov
+     ========================================================= -->
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <div class="brand">
+      <img class="logo" src="icon-192.png" alt="Logo Vo vrecku" width="42" height="42">
+      <div>
+        <h1>Vo vrecku</h1>
+        <p>Osobný finančný poradca</p>
+      </div>
+    </div>
+    <nav class="month-nav" aria-label="Výber mesiaca">
+      <button class="icon-btn" id="prevMonth" aria-label="Predchádzajúci mesiac">←</button>
+      <div class="month-label" id="monthLabel" aria-live="polite"></div>
+      <button class="icon-btn" id="nextMonth" aria-label="Nasledujúci mesiac">→</button>
+      <button class="btn small ghost" id="todayBtn">Tento mesiac</button>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ===== SÚHRN: veľké čísla a farebný stav ===== -->
+  <section class="card summary" aria-label="Súhrn mesiaca">
+    <!-- hlavné číslo ako vo videu -->
+    <div class="hero">
+      <span class="lead">Dnes môžeš minúť</span>
+      <span class="value" id="sumDaily"></span>
+      <span class="sub" id="sumDailySub"></span>
+    </div>
+    <div class="stats">
+      <div class="stat">
+        <span class="label">Voľné na mesiac</span>
+        <span class="value" id="sumFree"></span>
+      </div>
+      <div class="stat">
+        <span class="label">Už minuté</span>
+        <span class="value" id="sumSpent"></span>
+      </div>
+      <div class="stat">
+        <span class="label">Ešte zostáva</span>
+        <span class="value" id="sumRemaining"></span>
+      </div>
+    </div>
+    <div class="status" id="status"></div>
+  </section>
+
+  <div class="grid">
+
+    <!-- ===== TVOJ PLÁN (ciele a tipy zo sprievodcu) ===== -->
+    <section class="card span2" id="goalCard">
+      <h2>Tvoj plán</h2>
+      <div id="goalBody"></div>
+      <ul class="tips" id="tipList"></ul>
+      <p class="muted tip-note" id="tipNote">Tipy sú všeobecné rady, nie osobné investičné poradenstvo.</p>
+      <button class="btn small ghost" id="openOnboarding" type="button">Upraviť moje ciele</button>
+    </section>
+
+    <!-- ===== NOVÝ VÝDAVOK (nákup) ===== -->
+    <section class="card">
+      <h2>Zapísať výdavok</h2>
+      <form id="expenseForm" novalidate>
+        <div class="form-grid">
+          <div>
+            <label for="expAmount">Suma (€)</label>
+            <input id="expAmount" type="text" inputmode="decimal" placeholder="napr. 12,50" autocomplete="off">
+          </div>
+          <div>
+            <label for="expCategory">Kategória</label>
+            <select id="expCategory"></select>
+          </div>
+          <div>
+            <label for="expDate">Dátum</label>
+            <input id="expDate" type="date">
+          </div>
+          <div>
+            <label for="expNote">Poznámka</label>
+            <input id="expNote" type="text" maxlength="100" placeholder="napr. Lidl" autocomplete="off">
+          </div>
+          <div class="full">
+            <button class="btn block" type="submit">+ Pridať výdavok</button>
+            <div class="error" id="expError" role="alert"></div>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <!-- ===== ZOZNAM VÝDAVKOV ZA MESIAC ===== -->
+    <section class="card">
+      <h2>Výdavky v mesiaci <span class="hint" id="expCount"></span></h2>
+      <ul class="list" id="expenseList"></ul>
+      <div class="total-row"><span>Spolu minuté</span><span id="expTotal"></span></div>
+    </section>
+
+    <!-- ===== GRAFY ===== -->
+    <section class="card span2">
+      <h2>Grafy</h2>
+      <div class="charts">
+        <div>
+          <div class="chart-title">Minuté vs. zostáva</div>
+          <div class="chart-box is-empty" id="budgetBox">
+            <canvas id="budgetChart" role="img" aria-label="Graf minuté verzus zostáva"></canvas>
+            <div class="chart-empty" id="budgetEmpty">Načítavam graf…</div>
+          </div>
+        </div>
+        <div>
+          <div class="chart-title">Minuté podľa kategórií</div>
+          <div class="chart-box is-empty" id="catBox">
+            <canvas id="catChart" role="img" aria-label="Graf minuté podľa kategórií"></canvas>
+            <div class="chart-empty" id="catEmpty">Načítavam graf…</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== PRÍJMY ===== -->
+    <section class="card">
+      <h2>Mesačný príjem <span class="hint">(výplata, brigáda, štipendium…)</span></h2>
+      <ul class="list" id="incomesList"></ul>
+      <form class="inline-form" id="incomesForm" novalidate>
+        <input name="name" type="text" maxlength="60" placeholder="Názov, napr. Výplata" aria-label="Názov príjmu" autocomplete="off">
+        <input name="amount" type="text" inputmode="decimal" placeholder="Suma €" aria-label="Suma príjmu" autocomplete="off">
+        <button class="btn" type="submit">Pridať</button>
+      </form>
+      <div class="error" id="incomesError" role="alert"></div>
+      <div class="total-row"><span>Príjem spolu</span><span class="big pos" id="incomesTotal"></span></div>
+    </section>
+
+    <!-- ===== FIXNÉ VÝDAVKY ===== -->
+    <section class="card">
+      <h2>Fixné výdavky <span class="hint">(každý mesiac rovnaké)</span></h2>
+      <ul class="list" id="fixedList"></ul>
+      <form class="inline-form" id="fixedForm" novalidate>
+        <input name="name" type="text" maxlength="60" placeholder="Názov, napr. Nájom" aria-label="Názov fixného výdavku" autocomplete="off">
+        <input name="amount" type="text" inputmode="decimal" placeholder="Suma €" aria-label="Suma fixného výdavku" autocomplete="off">
+        <button class="btn" type="submit">Pridať</button>
+      </form>
+      <div class="error" id="fixedError" role="alert"></div>
+      <div class="total-row"><span>Fixné výdavky spolu</span><span class="big" id="fixedTotal"></span></div>
+    </section>
+
+    <!-- ===== VOĽNÉ PENIAZE NA MESIAC ===== -->
+    <section class="card">
+      <h2>Voľné peniaze na mesiac</h2>
+      <div class="calc-row"><span>Príjem</span><strong class="pos" id="calcIncome"></strong></div>
+      <div class="calc-row"><span>− Fixné výdavky</span><strong id="calcFixed"></strong></div>
+      <div class="calc-row">
+        <label for="savingsInput">− Chcem ušetriť (€)</label>
+        <input id="savingsInput" type="text" inputmode="decimal" placeholder="0" autocomplete="off">
+      </div>
+      <div class="error" id="savingsError" role="alert"></div>
+      <div class="total-row">
+        <span>Môžem minúť tento mesiac</span>
+        <span class="free-big" id="calcFree"></span>
+      </div>
+    </section>
+
+    <!-- ===== ZÁLOHA DÁT ===== -->
+    <section class="card">
+      <h2>Uloženie a záloha</h2>
+      <p class="storage-info" id="storageInfo">Všetko, čo zapíšeš, sa ukladá automaticky v tomto prehliadači
+        a ostane uložené aj po zatvorení stránky.</p>
+      <p class="muted">🔒 Tvoje údaje nikam neodchádzajú – nie sú na žiadnom serveri a nikto iný ich nevidí. Sú len v tomto zariadení a v zálohe, ktorú si sám stiahneš.</p>
+      <button class="btn block" id="installBtn" hidden>📲 Nainštalovať aplikáciu na plochu</button>
+      <p class="muted" id="backupInfo"></p>
+      <p class="muted">⚠ Záloha (.json) obsahuje tvoje finančné údaje bez hesla. Ulož si ju len k sebe a nikomu ju neposielaj.</p>
+      <div class="backup-buttons">
+        <button class="btn" id="exportBtn">⬇ Exportovať dáta</button>
+        <button class="btn ghost" id="importBtn">⬆ Importovať dáta</button>
+        <input type="file" id="importFile" accept=".json,application/json" hidden>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<!-- ===== ÚVODNÝ SPRIEVODCA (otázky pri prvom spustení) ===== -->
+<div class="ob" id="onboarding" hidden role="dialog" aria-modal="true" aria-label="Nastavenie appky">
+  <div class="ob-inner">
+    <div class="ob-top"><span class="ob-step" id="obStep">01 / 05</span><button class="ob-skip" id="obSkip" type="button">Preskočiť</button></div>
+    <div class="ob-bar"><div id="obBarFill"></div></div>
+    <div class="ob-body" id="obBody"></div>
+    <div class="ob-nav"><button class="btn ghost" id="obBack" type="button">← Späť</button><button class="btn" id="obNext" type="button">Ďalej →</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- Celá logika appky je v súbore app.js -->
+
+<!-- Knižnica Chart.js 4.4.1 na grafy – je priamo v priečinku vendor/, nič sa nesťahuje z cudzích serverov.
+     "defer" = stránka sa nezdrží čakaním na ňu. -->
+<script defer src="vendor/chart.umd.min.js"></script>
+<script defer src="app.js"></script>
+</body>
+</html>
